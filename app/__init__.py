@@ -16,7 +16,6 @@ def create_app(config_name):
     from app.services import services as service_blueprint
     # url_prefix='/services'
     app.register_blueprint(service_blueprint)
-
     return app
 
 

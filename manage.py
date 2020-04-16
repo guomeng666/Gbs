@@ -1,5 +1,6 @@
 # _*_ codding:utf-8 _*_
 from app import create_app, db
+from app.models import *
 from flask_script import Manager, Shell
 from flask_migrate import Migrate, MigrateCommand
 from flask import render_template
@@ -11,8 +12,9 @@ manager = Manager(app)
 migrate = Migrate(app, db)
 
 
+# User=User, BankType=BankType, Role=Role, Department=Department
 def make_shell_context():
-    return dict(app=app, db=db)
+    return dict(app=app, db=db, Role=Role, User=User, Department=Department)
 
 
 manager.add_command("shell", Shell(make_context=make_shell_context))
@@ -29,7 +31,8 @@ def page_not_found(error):
 
 
 if __name__ == '__main__':
-    app.run('127.0.0.1', 5000)
-    # manager.run()
+    manager.run()
+    # app.run('127.0.0.1', 5000)
+
 
 
