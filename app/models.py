@@ -13,6 +13,12 @@ class Department(db.Model):
     Users = db.relationship('User', backref='Department')
 
 
+# 角色-权限表
+RolePrimissions = db.Table('roleprimissions',
+                     db.Column('RoleID', db.Integer, db.ForeignKey('role.ID')),
+                     db.Column('PrimissionID', db.Integer, db.ForeignKey('primission.ID')))
+
+
 # 角色表
 class Role(db.Model):
     __tablename__ = "role"
@@ -20,14 +26,26 @@ class Role(db.Model):
     Name = db.Column(db.String(100), unique=True)  # 角色名称
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 更新时间
+    Primissions = db.relationship("Primisson", secondary=RolePrimissions,
+                                  backref=db.backref("Roles", lazy='dynamic'), lazy='dynamic')
 
 
-# # 用户-角色表
-# class UserRoles(db.Model):
-#     __tablename__ = "uerroles"
-#     ID = db.Column(db.Integer, primary_key=True)  # 编号
-#     UserId = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 部门名称
-#     RoleId = db.Column(db.Integer, db.ForeignKey('role.ID'))  # 部门名称
+# 权限表
+class Primisson(db.Model):
+    __tablename__ = "primission"
+    ID = db.Column(db.Integer, primary_key=True)  # 权限编号
+    Name = db.Column(db.String(100), unique=True)  # 权限名称
+    Quer = db.Column(db.Integer)  # 查询权限
+    Maintain = db.Column(db.Integer)  # 维护权限
+    Register = db.Column(db.Integer)  # 登记权限
+    Sampling = db.Column(db.Integer)  # 扦样权限
+    Assay = db.Column(db.Integer)  # 化验室权限
+    Sell = db.Column(db.Integer)  # 售粮权限
+    Weigh = db.Column(db.Integer)  # 检斤权限
+    Unload = db.Column(db.Integer)  # 卸粮权限
+    Settlement = db.Column(db.Integer)  # 结算权限
+    CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 更新时间
 
 
 # 用户-角色表
@@ -615,6 +633,8 @@ class Settlement(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+
+
 
 
 
