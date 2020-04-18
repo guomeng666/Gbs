@@ -15,7 +15,7 @@ def create_app(config_name):
     # 注册web服务蓝图
     from app.services import services as service_blueprint
     # url_prefix='/services'
-    app.register_blueprint(service_blueprint)
+    app.register_blueprint(service_blueprint, url_prefix='/services')
     return app
 
 
