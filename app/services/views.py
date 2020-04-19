@@ -10,13 +10,14 @@ from functools import wraps
 
 @services.route("/query", methods=["POST", "GET"])
 def index():
-    # data = request.form.get('User')
-    cmd = request.json.get("Cmd")
-    print(cmd)
-    if cmd is not None:
-        handler = serviceDict.get(cmd)
-        if handler:
-            return handler()
+    data = json.loads(request.get_data(as_text=True))
+    if data is not None:
+        cmd = request.json.get("Cmd")
+        print(cmd)
+        if cmd is not None:
+            handler = serviceDict.get(cmd)
+            if handler:
+                return handler(data)
     return "error"
 
 
