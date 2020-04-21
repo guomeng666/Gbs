@@ -13,10 +13,10 @@ class Department(db.Model):
     Users = db.relationship('User', backref='Department')
 
 
-# 角色-权限表
-RolePrimissions = db.Table('roleprimissions',
-                     db.Column('RoleID', db.Integer, db.ForeignKey('role.ID')),
-                     db.Column('PrimissionID', db.Integer, db.ForeignKey('primission.ID')))
+# # 角色-权限表
+# RolePrimissions = db.Table('roleprimissions',
+#                      db.Column('RoleID', db.Integer, db.ForeignKey('role.ID')),
+#                      db.Column('PrimissionID', db.Integer, db.ForeignKey('primission.ID')))
 
 
 # 角色表
@@ -24,10 +24,11 @@ class Role(db.Model):
     __tablename__ = "role"
     ID = db.Column(db.Integer, primary_key=True)  # 角色编号
     Name = db.Column(db.String(100), unique=True)  # 角色名称
+    PermissonID = db.Column(db.Integer, db.ForeignKey('primission.ID'))  # 创建者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 更新时间
-    Primissions = db.relationship("Primisson", secondary=RolePrimissions,
-                                  backref=db.backref("Roles", lazy='dynamic'), lazy='dynamic')
+    # Primissions = db.relationship("Primisson", secondary=RolePrimissions,
+    #                               backref=db.backref("Roles", lazy='dynamic'), lazy='dynamic')
 
 
 # 权限表
@@ -46,6 +47,7 @@ class Primisson(db.Model):
     Settlement = db.Column(db.Integer)  # 结算权限
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 更新时间
+    Roles = db.relationship('Role', backref='Permissons', foreign_keys="Role.PermissonID")
 
 
 # 用户-角色表
@@ -63,7 +65,7 @@ class User(db.Model):
     IdentityID = db.Column(db.String(100))  # 身份证号码
     Address = db.Column(db.String(200))  # 身份证住址
     DepartmentID = db.Column(db.Integer, db.ForeignKey('department.ID'))  # 部门ID
-    LastLoginTime = db.Column(db.DateTime, default=datetime.now)  # 最后登录时间
+    LastLoginTime = db.Column(db.DateTime)  # 最后登录时间
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 注册时间
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 更新时间
     Roles = db.relationship("Role", secondary=UserRoles, backref=db.backref("Users", lazy='dynamic'), lazy='dynamic')
