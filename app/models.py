@@ -200,6 +200,8 @@ class VehicleType(db.Model):
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
 
+    Vehicles = db.relationship('Vehicle', backref='VehicleType', foreign_keys="Vehicle.VehicleTypeID")
+
 
 # 银行卡类型
 class BankType(db.Model):
@@ -210,6 +212,7 @@ class BankType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Vehicles = db.relationship('Seller', backref='BankType', foreign_keys="Seller.BankTypeID")
 
 
 # 合同类型

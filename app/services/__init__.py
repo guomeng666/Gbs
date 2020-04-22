@@ -6,8 +6,16 @@ from app.services.interface import *
 services = Blueprint("services", __name__)
 
 serviceDict = {
+                "256": edit_vehicle,
+                "257": query_vehicle,
                 "258": edit_vehicletype,
                 "259": query_vehicletype,
+                "268": edit_banktype,
+                "269": query_banktype,
+                "270": edit_warehouse,
+                "271": query_warehouse,
+                "282": edit_seller,
+                "283": query_seller,
                 "501": edit_department,
                 "502": query_department,
                 "503": edit_role,

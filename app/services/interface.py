@@ -490,3 +490,391 @@ def edit_vehicletype(json_data):
         result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
                   "TotalData": "", "Data": ""}
     return json.dumps(result)
+
+
+# 查询车辆数据
+def query_vehicle(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    vehicle_name = json_data.get("VehicleLiscence")
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+    print(sender, vehicle_name, start_page, per_page, start_date, end_date)
+    vehicle_name.strip()
+    if len(vehicle_name) != 0:
+        page_data = Vehicle.query.filter(Vehicle.Liscense == vehicle_name)\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    elif start_date and end_date is not None:
+        page_data = Vehicle.query.filter(Vehicle.CreateTime.between(start_date, end_date)) \
+                    .order_by(Vehicle.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = Vehicle.query.order_by(Vehicle.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+    for vehicle in page_data.items:
+        row = {"ID": vehicle.ID, "Name": vehicle.Liscense,  "VehicleType": vehicle.VehicleType.Name,
+               "color": vehicle.color, "FrameID": vehicle.FrameID,
+               "Creater": vehicle.Creater.Name, "Updater": vehicle.Updater.Name,
+               "CreateTime": str(vehicle.CreateTime), "UpdateTime": str(vehicle.UpdateTime)}
+        query_list.append(row)
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    return json.dumps(result)
+
+
+# 编辑车辆数据
+def edit_vehicle(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    vehicle_number = json_data.get("Number")
+    vehicle_liscence = json_data.get("VehicleLiscence")
+    vehicle_type = json_data.get("VehicleType")
+    vehicle_color = json_data.get("VehicleColor")
+    vehicle_frame_id = json_data.get("VehicleFrameId")
+    operator = User.query.filter(User.Name == sender).first()
+    if operation == "alter":
+        # 数据存在才可以修改
+        alter_vehicle = Vehicle.query.filter(Vehicle.ID == vehicle_number).first()
+        vehicletype = VehicleType.query.filter(VehicleType.ID == vehicle_type).first()
+        if alter_vehicle:
+            alter_vehicle.Liscense = vehicle_liscence
+            alter_vehicle.VehicleType = vehicletype
+            alter_vehicle.color = vehicle_color
+            alter_vehicle.FrameID = vehicle_frame_id
+            alter_vehicle.Updater = operator
+            alter_vehicle.UpdateTime = datetime.now()
+            db.session.add(alter_vehicle)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            result = {"Cmd": cmd, "Errno": 4, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+    elif operation == "add":
+        old_vehicle = Vehicle.query.filter_by(Liscense=vehicle_liscence).first()
+        vehicletype = VehicleType.query.filter(VehicleType.ID == vehicle_type).first()
+        # 数据没有重名的可以添加
+        if not old_vehicle:
+            old_vehicle = Vehicle(Liscense=vehicle_liscence)
+            old_vehicle.color = vehicle_color
+            old_vehicle.FrameID = vehicle_frame_id
+            old_vehicle.VehicleType = vehicletype
+            old_vehicle.Creater = operator
+            old_vehicle.Updater = operator
+            db.session.add(old_vehicle)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            # 数据重名了
+            result = {"Cmd": cmd, "Errno": 3, "ErrMsg": "The modified data does not exist", "Page": "",
+                      "TotalData": "", "Data": ""}
+    if operation == "delete":
+        # 先查询删除的数据是否存在
+        delete_vehicle = Vehicle.query.filter(Vehicle.ID == vehicle_number).first()
+        if delete_vehicle:
+            db.session.delete(delete_vehicle)
+            db.session.commit()
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+# 查询仓库数据
+def query_warehouse(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    warehouse_name = json_data.get("WarehouseName")
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+    print(sender, warehouse_name, start_page, per_page, start_date, end_date)
+    warehouse_name.strip()
+    if len(warehouse_name) != 0:
+        page_data = WareHouseType.query.filter(WareHouseType.Name == warehouse_name)\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    elif start_date and end_date is not None:
+        page_data = WareHouseType.query.filter(WareHouseType.CreateTime.between(start_date, end_date)) \
+                    .order_by(WareHouseType.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = WareHouseType.query.order_by(WareHouseType.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+    for warehouse in page_data.items:
+        if warehouse.Enabled:
+            enable = "启用"
+        else:
+            enable = "停用"
+        row = {
+               "ID": warehouse.ID, "Name": warehouse.Name,  "Enabled": enable,
+               "Creater": warehouse.Creater.Name, "Updater": warehouse.Updater.Name,
+               "CreateTime": str(warehouse.CreateTime), "UpdateTime": str(warehouse.UpdateTime)
+               }
+        query_list.append(row)
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    return json.dumps(result)
+
+
+# 编辑仓库数据
+def edit_warehouse(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")
+    name = json_data.get("WarehouseName")
+    enabled = json_data.get("Enabled")
+    operator = User.query.filter(User.Name == sender).first()
+    if operation == "alter":
+        # 数据存在才可以修改
+        warehouse = WareHouseType.query.filter(WareHouseType.ID == number).first()
+        if warehouse:
+            warehouse.Name = name
+            warehouse.Enabled = int(enabled)
+            warehouse.Updater = operator
+            warehouse.UpdateTime = datetime.now()
+            db.session.add(warehouse)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            result = {"Cmd": cmd, "Errno": 4, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+    elif operation == "add":
+        old_warehouse = WareHouseType.query.filter_by(Name=name).first()
+        # 数据没有重名的可以添加
+        if not old_warehouse:
+            old_warehouse = WareHouseType(Name=name)
+            old_warehouse.Enabled = int(enabled)
+            old_warehouse.Creater = operator
+            old_warehouse.Updater = operator
+            db.session.add(old_warehouse)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            # 数据重名了
+            result = {"Cmd": cmd, "Errno": 3, "ErrMsg": "The modified data does not exist", "Page": "",
+                      "TotalData": "", "Data": ""}
+    if operation == "delete":
+        # 先查询删除的数据是否存在
+        delete = WareHouseType.query.filter(WareHouseType.ID == number).first()
+        if delete:
+            db.session.delete(delete)
+            db.session.commit()
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+# 查询银行类型
+def query_banktype(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    name = json_data.get("BankTypeName")
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+    print(sender, name, start_page, per_page, start_date, end_date)
+    name.strip()
+    if len(name) != 0:
+        page_data = BankType.query.filter(BankType.Name == name)\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    elif start_date and end_date is not None:
+        page_data = BankType.query.filter(BankType.CreateTime.between(start_date, end_date)) \
+                    .order_by(BankType.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = BankType.query.order_by(BankType.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+    for banktype in page_data.items:
+        row = {
+               "ID": banktype.ID, "Name": banktype.Name,
+               "Creater": banktype.Creater.Name, "Updater": banktype.Updater.Name,
+               "CreateTime": str(banktype.CreateTime), "UpdateTime": str(banktype.UpdateTime)
+               }
+        query_list.append(row)
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    return json.dumps(result)
+
+
+# 编辑银行类型
+def edit_banktype(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")
+    name = json_data.get("BankTypeName")
+    operator = User.query.filter(User.Name == sender).first()
+    if operation == "alter":
+        # 数据存在才可以修改
+        banktype = BankType.query.filter(BankType.ID == number).first()
+        if banktype:
+            banktype.Name = name
+            banktype.Updater = operator
+            banktype.UpdateTime = datetime.now()
+            db.session.add(banktype)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            result = {"Cmd": cmd, "Errno": 4, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+    elif operation == "add":
+        old_banktype = BankType.query.filter_by(Name=name).first()
+        # 数据没有重名的可以添加
+        if not old_banktype:
+            old_banktype = BankType(Name=name)
+            old_banktype.Creater = operator
+            old_banktype.Updater = operator
+            db.session.add(old_banktype)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            # 数据重名了
+            result = {"Cmd": cmd, "Errno": 3, "ErrMsg": "The modified data does not exist", "Page": "",
+                      "TotalData": "", "Data": ""}
+    if operation == "delete":
+        # 先查询删除的数据是否存在
+        delete = BankType.query.filter(BankType.ID == number).first()
+        if delete:
+            db.session.delete(delete)
+            db.session.commit()
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+# 查询售粮户
+def query_seller(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    name = json_data.get("SellerName")
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+    print(sender, name, start_page, per_page, start_date, end_date)
+    name.strip()
+    if len(name) != 0:
+        page_data = Seller.query.filter(Seller.Name == name)\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    elif start_date and end_date is not None:
+        page_data = Seller.query.filter(Seller.CreateTime.between(start_date, end_date)) \
+                    .order_by(Seller.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = Seller.query.order_by(Seller.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+    for seller in page_data.items:
+        row = {
+               "ID": seller.ID, "Name": seller.Name, "IdentityID": seller.IdentityID,  "Address": seller.Address,
+               "Phone": seller.Phone, "BankType": seller.BankType.Name, "BankID": seller.BankID,
+               "Creater": seller.Creater.Name, "Updater": seller.Updater.Name,
+               "CreateTime": str(seller.CreateTime), "UpdateTime": str(seller.UpdateTime)
+               }
+        query_list.append(row)
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    return json.dumps(result)
+
+
+# 编辑售粮户
+def edit_seller(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")
+    name = json_data.get("SellerName")
+    identity = json_data.get("IdentityID")
+    address = json_data.get("SellerAddress")
+    phone = json_data.get("SellerPhone")
+    bank_type = json_data.get("BankType")
+    bank_id = json_data.get("BankId")
+    operator = User.query.filter(User.Name == sender).first()
+
+    banktype = BankType.query.filter(BankType.ID == bank_type).first()
+    if operation == "alter":
+        # 数据存在才可以修改
+        seller = Seller.query.filter(Seller.ID == number).first()
+        if seller:
+            seller.Name = name
+            seller.IdentityID = identity
+            seller.Address = address
+            seller.Phone = phone
+            seller.BankType = banktype
+            seller.id = bank_id
+            seller.Updater = operator
+            seller.UpdateTime = datetime.now()
+            db.session.add(seller)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            result = {"Cmd": cmd, "Errno": 4, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+    elif operation == "add":
+        new_seller = Seller.query.filter_by(Name=name).first()
+        # 数据没有重名的可以添加
+        if not new_seller:
+            new_seller = Seller(Name=name)
+            new_seller.IdentityID = identity
+            new_seller.Address = address
+            new_seller.Phone = phone
+            new_seller.BankType = banktype
+            new_seller.BankID = bank_id
+            new_seller.Creater = operator
+            new_seller.Updater = operator
+            db.session.add(new_seller)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            # 数据重名了
+            result = {"Cmd": cmd, "Errno": 3, "ErrMsg": "The modified data does not exist", "Page": "",
+                      "TotalData": "", "Data": ""}
+    if operation == "delete":
+        # 先查询删除的数据是否存在
+        delete = Seller.query.filter(Seller.ID == number).first()
+        if delete:
+            db.session.delete(delete)
+            db.session.commit()
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
