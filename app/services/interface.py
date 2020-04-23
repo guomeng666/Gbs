@@ -1728,13 +1728,17 @@ def edit_valuation(json_data):
     detial = json_data.get("Detail")
     marks = json_data.get("Marks")
     operator = User.query.filter(User.Name == sender).first()
+    default = int(default)
     if operation == "alter":
         # 数据存在才可以修改
         alter = Valuation.query.filter(Valuation.ID == number).first()
         if alter:
             alter.Name = name
             alter.Price = price
-            alter.IsDefault = default
+            if default:
+                alter.IsDefault = True
+            else:
+                alter.IsDefault = False
             alter.Detail = detial
             alter.Remarks = marks
             alter.Updater = operator
@@ -1752,7 +1756,10 @@ def edit_valuation(json_data):
         if not new:
             new = Valuation(Name=name)
             new.Price = price
-            new.IsDefault = default
+            if default:
+                new.IsDefault = True
+            else:
+                new.IsDefault = False
             new.Detail = detial
             new.Remarks = marks
             new.Creater = operator
@@ -1774,3 +1781,4 @@ def edit_valuation(json_data):
         result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
                   "TotalData": "", "Data": ""}
     return json.dumps(result)
+
