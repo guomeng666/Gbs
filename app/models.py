@@ -464,13 +464,9 @@ class Valuation(db.Model):
     __tablename__ = "valuation"
     ID = db.Column(db.Integer, primary_key=True)  # 编号
     Name = db.Column(db.String(100))  # 计价名称
-    MoistureRatio = db.Column(db.String(100))  # 水分扣重比
-    WeightRatio = db.Column(db.String(100))  # 容重扣重比
-    ImpurityRatio = db.Column(db.String(100))  # 杂志扣重比
-    SideImpurityRatio = db.Column(db.String(100))  # 并间杂扣重比
-    MildewRatio = db.Column(db.String(100))  # 霉变扣重比
-    BrokenRatio = db.Column(db.String(100))  # 破碎扣重比
-    HeatHarmRatio = db.Column(db.String(100))  # 热损伤扣重比
+    Price = db.Column(db.Float)  # 每吨多少钱
+    IsDefault = db.Column(db.Boolean)  # 当前是否是核算的默认计价方式
+    Detail = db.Column(db.Text)  # 详细计价方式内容
     Remarks = db.Column(db.String(1024))  # 备注
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
