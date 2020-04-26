@@ -9,7 +9,7 @@ from functools import wraps
 
 
 @services.route("/query", methods=["POST", "GET"])
-def index():
+def base_service():
     data = json.loads(request.get_data(as_text=True))
     if data is not None:
         cmd = request.json.get("Cmd")
@@ -19,6 +19,19 @@ def index():
             if handler:
                 return handler(data)
     return "error"
+
+
+# @services.route("/business", methods=["POST", "GET"])
+# def business_service():
+#     data = json.loads(request.get_data(as_text=True))
+#     if data is not None:
+#         cmd = request.json.get("Cmd")
+#         print(cmd)
+#         if cmd is not None:
+#             handler = serviceDict.get(cmd)
+#             if handler:
+#                 return handler(data)
+#     return "error"
 
 
 

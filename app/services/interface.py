@@ -801,9 +801,13 @@ def query_seller(json_data):
     print(page_data.total)
     print(page_data.pages)  # 当前查询的数据一共有多少页
     for seller in page_data.items:
+        if seller.BankType:
+            bank_name = seller.BankType.Name
+        else:
+            bank_name = ""
         row = {
                "ID": seller.ID, "Name": seller.Name, "IdentityID": seller.IdentityID,  "Address": seller.Address,
-               "Phone": seller.Phone, "BankType": seller.BankType.Name, "BankID": seller.BankID,
+               "Phone": seller.Phone, "BankType": bank_name, "BankID": seller.BankID,
                "Creater": seller.Creater.Name, "Updater": seller.Updater.Name,
                "CreateTime": str(seller.CreateTime), "UpdateTime": str(seller.UpdateTime)
                }
@@ -1675,7 +1679,7 @@ def edit_purchase(json_data):
     return json.dumps(result)
 
 
-# 计价方式查询
+# 查询计价方式
 def query_valuation(json_data):
     print(json_data)
     cmd = json_data.get("Cmd")
@@ -1715,7 +1719,7 @@ def query_valuation(json_data):
     return json.dumps(result)
 
 
-# 编辑流程
+# 编辑计价方式
 def edit_valuation(json_data):
     print(json_data)
     cmd = json_data.get("Cmd")
@@ -1775,6 +1779,182 @@ def edit_valuation(json_data):
     if operation == "delete":
         # 先查询删除的数据是否存在
         delete = Valuation.query.filter(Valuation.ID == number).first()
+        if delete:
+            db.session.delete(delete)
+            db.session.commit()
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+# 查询合同
+def query_contract(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    name = json_data.get("Name")
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+    print(sender, name, start_page, per_page, start_date, end_date)
+    name.strip()
+    if len(name) != 0:
+        page_data = Contract.query.filter(Contract.ContractNum == name)\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    elif start_date and end_date is not None:
+        page_data = Contract.query.filter(Contract.CreateTime.between(start_date, end_date)) \
+                    .order_by(Contract.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = Contract.query.order_by(Contract.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+    for contract in page_data.items:
+        row = {
+               "ID": contract.ID, "ContractNum": contract.ContractNum, "ContractType": contract.ContractType.Name,
+               "GrainType": contract.CerealsType.Name, "Start": str(contract.StartTime), "End": str(contract.EndTime),
+               "OrderID": contract.OrderID, "Supplier": contract.Supplier.Name,
+               "TransCompany": contract.TransprotCompany.Name, "Source": contract.SourceAddress,
+               "Total": contract.PurchaseAmount, "Complete": contract.PurchaseComplete,
+               "TransportNum": contract.TransportID, "WagaonNum": contract.WagonNum,
+               "PayType": contract.PaymentType.Name, "BankType": contract.BankType.Name,
+               "BankNum": contract.BankID, "Contact": contract.Contact,
+               "ContactPhone": contract.ContactPhone, "IsComplete": contract.IsComplete,
+               "Remark": contract.Remarks, "Valuation": contract.Valuation.Name,
+               "Creater": contract.Creater.Name, "Updater": contract.Updater.Name,
+               "CreateTime": str(contract.CreateTime), "UpdateTime": str(contract.UpdateTime)
+               }
+        query_list.append(row)
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    return json.dumps(result)
+
+
+# 编辑合同
+def edit_contract(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")  # 数据库编号 修改使用
+    contract_num = json_data.get("ContractNum")  # 合同号码
+    contract_type_id = json_data.get("ContractType")    # 合同类型ID
+    grain_type_id = json_data.get("GrainType")   # 粮食类型ID
+    start = json_data.get("Start")  # 开始日期
+    end = json_data.get("End")  # 结束日期
+    order_num = json_data.get("OrderID")  # 订单号码
+    supplier_id = json_data.get("Supplier")  # 供应商ID
+    trans_company_id = json_data.get("TransCompany")  # 运输公司ID
+    source = json_data.get("Source")  # 原发地
+    total = json_data.get("Total")   # 合同总量
+    complete = json_data.get("Complete")  # 已完成的总量
+    transport_num = json_data.get("TransportNum")  # 车船号码
+    wagaon_num = json_data.get("WagaonNum")  # 车皮号码
+    pay_type_id = json_data.get("PayType")   # 支付类型ID
+    bank_type_id = json_data.get("BankType")  # 银行类型ID
+    bank_num = json_data.get("BankNum")  # 银行卡号码
+    contact = json_data.get("Contact")  # 联系人
+    contact_phone = json_data.get("ContactPhone")  # 联系人手机号码
+    is_complete = json_data.get("IsComplete")  # 是否完成
+    remarks = json_data.get("Remark")  # 备注
+    valuation_id = json_data.get("Valuation")  # 计价方式ID
+    is_complete = int(is_complete)
+    # 查询所有外键
+    contact_type = ContractType.query.filter(ContractType.ID == contract_type_id).first()
+    grain_type = CerealsType.query.filter(CerealsType.ID == grain_type_id).first()
+    supplier = Supplier.query.filter(Supplier.ID == supplier_id).first()
+    trans_company = TransprotCompany.query.filter(TransprotCompany.ID == trans_company_id).first()
+    pay_type = PaymentType.query.filter(PaymentType.ID == pay_type_id).first()
+    bank_type = BankType.query.filter(BankType.ID == bank_type_id).first()
+    valuation = Valuation.query.filter(Valuation.ID == valuation_id).first()
+
+    operator = User.query.filter(User.Name == sender).first()
+    if operation == "alter":
+        # 数据存在才可以修改
+        alter = Contract.query.filter(Contract.ID == number).first()
+        if alter:
+            print(contract_num)
+            alter.ContractNum = contract_num   # 合同号码
+            alter.ContractType = contact_type # 合同类型
+            alter.StartTime = start  # 开始日期
+            alter.EndTime = end  # 结束日期
+            alter.OrderID = order_num  # 订单编号
+            alter.BankType = bank_type  # 银行卡类型
+            alter.BankID = bank_num  # 银行卡号
+            alter.TransprotCompany = trans_company  # 运输公司ID
+            alter.TransportID = transport_num  # 车船号码
+            alter.Supplier = supplier  # 供应商ID
+            alter.SourceAddress = source  # 原发地
+            alter.PurchaseAmount = int(total)  # 采购总量
+            alter.PurchaseComplete = int(complete)  # 已完成总量
+            alter.PaymentType = pay_type  # 支付方式
+            alter.WagonNum = wagaon_num  # 车皮号码
+            alter.CerealsType = grain_type  # 粮食类型
+            alter.Valuation = valuation  # 计价方式
+            alter.Contact = contact  # 联系人
+            alter.ContactPhone = contact_phone  # 联系人电话
+            if is_complete:
+                alter.IsComplete = True
+            else:
+                alter.IsComplete = False
+            alter.Remarks = remarks  # 备注
+
+            alter.Updater = operator
+            alter.UpdateTime = datetime.now()
+            db.session.add(alter)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            result = {"Cmd": cmd, "Errno": 4, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+    elif operation == "add":
+        new = Contract.query.filter_by(ContractNum=contract_num).first()
+        # 数据没有重名的可以添加
+        if not new:
+            new = Contract()
+            new.ContractNum = contract_num  # 合同号码
+            new.ContractType = contact_type  # 合同类型
+            new.StartTime = start  # 开始日期
+            new.EndTime = end  # 结束日期
+            new.OrderID = order_num  # 订单编号
+            new.BankType = bank_type  # 银行卡类型
+            new.BankID = bank_num  # 银行卡号
+            new.TransprotCompany = trans_company  # 运输公司ID
+            new.TransportID = transport_num  # 车船号码
+            new.Supplier = supplier  # 供应商ID
+            new.SourceAddress = source  # 原发地
+            new.PurchaseAmount = int(total)  # 采购总量
+            new.PurchaseComplete = int(complete)  # 已完成总量
+            new.PaymentType = pay_type  # 支付方式
+            new.WagonNum = wagaon_num  # 车皮号码
+            new.CerealsType = grain_type  # 粮食类型
+            new.Valuation = valuation  # 计价方式
+            new.Contact = contact  # 联系人
+            new.ContactPhone = contact_phone  # 联系人电话
+            if is_complete:
+                new.IsComplete = True
+            else:
+                new.IsComplete = False
+            new.Remarks = remarks  # 备注
+            new.Creater = operator
+            new.Updater = operator
+            db.session.add(new)
+            db.session.commit()
+            result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                      "TotalData": "", "Data": ""}
+        else:
+            # 数据重名了
+            result = {"Cmd": cmd, "Errno": 3, "ErrMsg": "The modified data does not exist", "Page": "",
+                      "TotalData": "", "Data": ""}
+    if operation == "delete":
+        # 先查询删除的数据是否存在
+        delete = Contract.query.filter(Contract.ID == number).first()
         if delete:
             db.session.delete(delete)
             db.session.commit()

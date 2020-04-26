@@ -13,9 +13,10 @@ def create_app(config_name):
     config[config_name].init_app(app)
     db.init_app(app)
     # 注册web服务蓝图
-    from app.services import services as service_blueprint
+    from app.services import services as services_blueprint
     # url_prefix='/services'
-    app.register_blueprint(service_blueprint, url_prefix='/services')
+    app.register_blueprint(services_blueprint, url_prefix='/services')
+
     return app
 
 

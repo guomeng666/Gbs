@@ -199,7 +199,6 @@ class VehicleType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
-
     Vehicles = db.relationship('Vehicle', backref='VehicleType', foreign_keys="Vehicle.VehicleTypeID")
 
 
@@ -213,6 +212,7 @@ class BankType(db.Model):
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     Vehicles = db.relationship('Seller', backref='BankType', foreign_keys="Seller.BankTypeID")
+    Contracts = db.relationship('Contract', backref='BankType', foreign_keys="Contract.BankTypeID")
 
 
 # 合同类型
@@ -224,6 +224,7 @@ class ContractType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Contracts = db.relationship('Contract', backref='ContractType', foreign_keys="Contract.ContractTypeID")
 
 
 # 粮食包装类型
@@ -235,6 +236,7 @@ class PakeType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Registers = db.relationship('Register', backref='PackType', foreign_keys="Register.PackTypeID")
 
 
 # 支付方式
@@ -246,6 +248,7 @@ class PaymentType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Contracts = db.relationship('Contract', backref='PaymentType', foreign_keys="Contract.PaymentTypeID")
 
 
 # 样品级别
@@ -268,6 +271,8 @@ class CerealsType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Contracts = db.relationship('Contract', backref='CerealsType', foreign_keys="Contract.CerealsTypeID")
+    Registers = db.relationship('Register', backref='CerealsType', foreign_keys="Register.CerealsTypeID")
 
 
 # 运输公司
@@ -279,6 +284,7 @@ class TransprotCompany(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Contracts = db.relationship('Contract', backref='TransprotCompany', foreign_keys="Contract.TransportCompanyID")
 
 
 # 供应商
@@ -290,6 +296,7 @@ class Supplier(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Contracts = db.relationship('Contract', backref='Supplier', foreign_keys="Contract.SupplierID")
 
 
 # 流程节点
@@ -457,6 +464,7 @@ class Vehicle(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Registers = db.relationship('Register', backref='Vehicle', foreign_keys="Register.VehicleID")
 
 
 # 计价方式
@@ -472,14 +480,15 @@ class Valuation(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Contracts = db.relationship('Contract', backref='Valuation', foreign_keys="Contract.ValuationID")
 
 
 # 合同管理表
 class Contract(db.Model):
     __tablename__ = "contract"
     ID = db.Column(db.Integer, primary_key=True)  # 合同编号
-    ContractID = db.Column(db.String(100))  # 合同号码
-    ContractType = db.Column(db.Integer, db.ForeignKey('contracttype.ID'))  # 合同类型
+    ContractNum = db.Column(db.String(100))  # 合同号码
+    ContractTypeID = db.Column(db.Integer, db.ForeignKey('contracttype.ID'))  # 合同类型
     StartTime = db.Column(db.DateTime)  # 开始日期
     EndTime = db.Column(db.DateTime)  # 结算日期
     OrderID = db.Column(db.String(100))  # 订单编号
@@ -490,11 +499,14 @@ class Contract(db.Model):
     SupplierID = db.Column(db.Integer, db.ForeignKey('supplier.ID'))  # 供应商ID
     SourceAddress = db.Column(db.String(100))  # 原发地
     PurchaseAmount = db.Column(db.Integer)  # 采购总量
+    PurchaseComplete = db.Column(db.Integer)  # 已完成总量
     PaymentTypeID = db.Column(db.Integer, db.ForeignKey('paymenttype.ID'))  # 支付方式
     WagonNum = db.Column(db.String(100))  # 车皮号码
     CerealsTypeID = db.Column(db.Integer, db.ForeignKey('cerealstype.ID'))  # 粮食类型
     ValuationID = db.Column(db.Integer, db.ForeignKey('valuation.ID'))  # 计价方式
-    Seller = db.Column(db.Integer, db.ForeignKey('seller.ID'))  # 联系人
+    # Seller = db.Column(db.Integer, db.ForeignKey('seller.ID'))  # 联系人
+    Contact = db.Column(db.String(100))  # 联系人
+    ContactPhone = db.Column(db.String(100))  # 联系人电话
     IsComplete = db.Column(db.Boolean)  # 是否完成
     Remarks = db.Column(db.String(1024))  # 备注
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
@@ -508,17 +520,17 @@ class Register(db.Model):
     __tablename__ = "register"
     ID = db.Column(db.Integer, primary_key=True)  # 登记编号
     VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
-    PurchaseType = db.Column(db.Integer, db.ForeignKey('purchasetype.ID'))  # 收购流程
-    PackType = db.Column(db.Integer, db.ForeignKey('packtype.ID'))  # 包装方式
-    CerealsType = db.Column(db.Integer, db.ForeignKey('cerealstype.ID'))  # 粮食类型
+    PurchaseType = db.Column(db.String(100))  # 收购流程
+    PackTypeID = db.Column(db.Integer, db.ForeignKey('packtype.ID'))  # 包装方式
+    CerealsTypeID = db.Column(db.Integer, db.ForeignKey('cerealstype.ID'))  # 粮食类型
     SellerID = db.Column(db.Integer, db.ForeignKey('seller.ID'))  # 售粮人
     PayeeID = db.Column(db.Integer, db.ForeignKey('seller.ID'))  # 结算人
-    PaymentType = db.Column(db.Integer, db.ForeignKey('paymenttype.ID'))  # 结算方式
-    ContractID = db.Column(db.Integer, db.ForeignKey('contract.ID'))  # 合同号码
     DriverID = db.Column(db.Integer, db.ForeignKey('seller.ID'))  # 司机
-    TagID = db.Column(db.String(100))  # 电子标签号码
+    ContractID = db.Column(db.Integer, db.ForeignKey('contract.ID'))  # 合同号码
+    TagNum = db.Column(db.String(100))  # 电子标签号码
     TagStatus = db.Column(db.String(100))  # 电子标签状态
     ICID = db.Column(db.String(100))  # IC卡号码
+    Remarks = db.Column(db.String(1024))  # IC卡号码
     PirctureID = db.Column(db.Integer, db.ForeignKey('pictureregister.ID'))  # 图片信息
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
@@ -545,9 +557,9 @@ class Sampling(db.Model):
 class Assay(db.Model):
     __tablename__ = "assay"
     ID = db.Column(db.Integer, primary_key=True)  # 化验单号
-    CerealsType = db.Column(db.Integer, db.ForeignKey('cerealstype.ID'))  # 粮食类型
+    CerealsTypeID = db.Column(db.Integer, db.ForeignKey('cerealstype.ID'))  # 粮食类型
     AssayStatus = db.Column(db.Boolean)  # 是否拒收
-    SampleClass = db.Column(db.Integer, db.ForeignKey('sampleclass.ID'))  # 样品级别
+    SampleClassID = db.Column(db.Integer, db.ForeignKey('sampleclass.ID'))  # 样品级别
     SampleBox = db.Column(db.String(100))  # 样品盒号码
     IsStandard = db.Column(db.Boolean)  # 是否是标准样
     UnitWeight = db.Column(db.Float)  # 容重

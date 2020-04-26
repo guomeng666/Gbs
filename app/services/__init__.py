@@ -2,10 +2,13 @@
 
 from flask import Blueprint
 from app.services.interface import *
+from app.services.business_interface import *
 
 services = Blueprint("services", __name__)
 
 serviceDict = {
+                "1": edit_register,
+                "2": query_register,
                 "256": edit_vehicle,
                 "257": query_vehicle,
                 "258": edit_vehicletype,
@@ -34,6 +37,8 @@ serviceDict = {
                 "281": query_procedurenode,
                 "282": edit_seller,
                 "283": query_seller,
+                "284": edit_contract,
+                "285": query_contract,
                 "290": edit_valuation,
                 "291": query_valuation,
                 "501": edit_department,
