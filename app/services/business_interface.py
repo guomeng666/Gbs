@@ -25,7 +25,8 @@ def add_seller(name, num, address, phone, banktype, bank_num, operator):
         seller.IdentityID = num
         seller.Address = address
         seller.Phone = phone
-        seller.BankType = banktype
+        if banktype:
+            seller.BankType = banktype
         seller.BankID = bank_num
         seller.Creater = operator
         seller.Updater = operator
@@ -238,11 +239,11 @@ def edit_register(json_data):
 
     # 获取发送人
     operator = User.query.filter(User.Name == sender).first()
-    # 添加车辆信息
+    # 添加车辆信息,必须存在
     vehicle = add_vehicle(vehicle_liscense=vehicle_liscense, vehicle_type_id=vehicle_type_id,
                           vehicle_color=vehicle_color, vehicle_frame=vehicle_frame,
                           operator=operator)
-
+    # 银行类型
     bank_type = BankType.query.filter(BankType.ID == bank_type_id).first()
     grain_type = CerealsType.query.filter(CerealsType.ID == grain_type_id).first()
     pack_type = PakeType.query.filter(PakeType.ID == pack_type_id).first()
@@ -250,22 +251,26 @@ def edit_register(json_data):
 
     if operation == "alter" or operation == "add":
         if operation == "alter":
+            # 修改则需要找出旧记录
             register = Register.query.filter(Register.ID == number).first()
         else:
+            # 增加新建记录
             register = Register()
         if purchase_type == "散收粮":
-            seller = add_seller(seller_name, seller_num, seller_address,
-                                seller_phone, bank_type, bank_num, operator)
-            payee = add_seller(payee_name, payee_num, payee_address,
-                               payee_phone, bank_type, bank_num, operator)
+            # 散收粮需要添加售粮人,结算人信息
+            register.Seller = add_seller(seller_name, seller_num, seller_address,
+                                         seller_phone, bank_type, bank_num, operator)
+            register.Payee = add_seller(payee_name, payee_num, payee_address,
+                                        payee_phone, bank_type, bank_num, operator)
+            register.PaymentType = payment_type  # 支付方式
         else:
-            # 查询合同号码
-            contract = Contract.query.filter(Contract.ContractNum == contract_num).first()
-            driver = add_seller(driver_name, driver_num, driver_address,
-                                driver_phone, bank_type, bank_num, operator)
+            # 合同粮需要添加合同号,司机信息
+            register.Contract = Contract.query.filter(Contract.ContractNum == contract_num).first()
+            register.Driver = add_seller(driver_name, driver_num, driver_address,
+                                         driver_phone, bank_type, bank_num, operator)
 
         # 如果是新建立则把图片存起来
-        if operator == "add":
+        if operation == "add":
             pircture = PictureRegister()
             pircture.Picture1 = pircture1
             pircture.Picture2 = pircture2
@@ -275,31 +280,24 @@ def edit_register(json_data):
             pircture.Updater = operator
             db.session.add(pircture)
             db.session.commit()
+            register.Picture = pircture  # 图片信息
 
         register.PurchaseType = purchase_type
         register.Vehicle = vehicle  # 车辆信息ID
         register.PurchaseType = purchase_type  # 收购流程
         register.PackType = pack_type  # 包装类型ID
         register.CerealsType = grain_type  # 粮食类型ID
-        if purchase_type == "散收粮":
-            register.Seller = seller  # 售粮人ID
-            register.Payee = payee  # 结算人类型ID
-            register.PaymentType = payment_type  # 支付方式
-        else:
-            register.Driver = driver  # 司机ID
-            register.Contract = contract  # 合同号码
+
         register.TagNum = tag_num  # 标签号码
         register.TagStatus = tag_status  # 标签状态
         register.ICID = icid  # IC卡号
         register.Remarks = remarks  # 备注信息
-        if operator == "add":
-            register.Picture = pircture  # 图片信息
+        if operation == "add":
             register.Creater = operator
-            register.Updater = operator
-            db.session.add(register)
-            db.session.commit()
-
-        if operator == "add":
+        register.Updater = operator
+        db.session.add(register)
+        db.session.commit()
+        if operation == "add":
             # 把新建立的登记数据放入到流程表中
             procedure = Procedure()
             procedure.Register = register
