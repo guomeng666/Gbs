@@ -9,6 +9,8 @@ services = Blueprint("services", __name__)
 serviceDict = {
                 "1": edit_register,
                 "2": query_register,
+                "7": query_seller_by_identityid,
+                "40": query_picture,
                 "256": edit_vehicle,
                 "257": query_vehicle,
                 "258": edit_vehicletype,

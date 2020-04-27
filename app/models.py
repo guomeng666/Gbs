@@ -166,6 +166,8 @@ class User(db.Model):
     SettlementCreater = db.relationship('Settlement', backref='Creater', foreign_keys="Settlement.CreateID")
     SettlementUpdater = db.relationship('Settlement', backref='Updater', foreign_keys="Settlement.UpdateID")
 
+    Frozens = db.relationship('Procedure', backref='Frozener', foreign_keys="Procedure.FrozenerID")
+
     def __repr__(self):
         return "<Admin %r>" % self.name
 
@@ -211,7 +213,7 @@ class BankType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
-    Vehicles = db.relationship('Seller', backref='BankType', foreign_keys="Seller.BankTypeID")
+    Sellers = db.relationship('Seller', backref='BankType', foreign_keys="Seller.BankTypeID")
     Contracts = db.relationship('Contract', backref='BankType', foreign_keys="Contract.BankTypeID")
 
 
@@ -236,7 +238,7 @@ class PakeType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
-    Registers = db.relationship('Register', backref='PackType', foreign_keys="Register.PackTypeID")
+    Registers = db.relationship('Register', backref='PackType')
 
 
 # 支付方式
@@ -249,6 +251,7 @@ class PaymentType(db.Model):
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     Contracts = db.relationship('Contract', backref='PaymentType', foreign_keys="Contract.PaymentTypeID")
+    Registers = db.relationship('Register', backref='PaymentType', foreign_keys="Register.PaymentTypeID")
 
 
 # 样品级别
@@ -272,7 +275,7 @@ class CerealsType(db.Model):
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     Contracts = db.relationship('Contract', backref='CerealsType', foreign_keys="Contract.CerealsTypeID")
-    Registers = db.relationship('Register', backref='CerealsType', foreign_keys="Register.CerealsTypeID")
+    Registers = db.relationship('Register', backref='CerealsType')
 
 
 # 运输公司
@@ -346,6 +349,7 @@ class PictureRegister(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Registers = db.relationship('Register', backref='Picture')
 
 
 # 扦样图片
@@ -450,6 +454,9 @@ class Seller(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Sellers = db.relationship('Register', backref='Seller', foreign_keys="Register.SellerID")
+    Payees = db.relationship('Register', backref='Payee', foreign_keys="Register.PayeeID")
+    Drivers = db.relationship('Register', backref='Driver', foreign_keys="Register.DriverID")
 
 
 # 车辆管理表
@@ -513,14 +520,16 @@ class Contract(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Registers = db.relationship('Register', backref='Contract', foreign_keys="Register.ContractID")
 
 
 # 登记表
 class Register(db.Model):
     __tablename__ = "register"
-    ID = db.Column(db.Integer, primary_key=True)  # 登记编号
+    ID = db.Column(db.Integer, primary_key=True)  # 凭证号
     VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
     PurchaseType = db.Column(db.String(100))  # 收购流程
+    PaymentTypeID = db.Column(db.Integer, db.ForeignKey('paymenttype.ID'))  # 支付方式
     PackTypeID = db.Column(db.Integer, db.ForeignKey('packtype.ID'))  # 包装方式
     CerealsTypeID = db.Column(db.Integer, db.ForeignKey('cerealstype.ID'))  # 粮食类型
     SellerID = db.Column(db.Integer, db.ForeignKey('seller.ID'))  # 售粮人
@@ -536,6 +545,7 @@ class Register(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Procedures = db.relationship('Procedure', backref='Register')
 
 
 # 扦样表
@@ -551,6 +561,7 @@ class Sampling(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Procedures = db.relationship('Procedure', backref='Sampling')
 
 
 # 化验表
@@ -583,6 +594,7 @@ class Assay(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Procedures = db.relationship('Procedure', backref='Assay')
 
 
 # 售粮表
@@ -596,6 +608,7 @@ class Sell(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Procedures = db.relationship('Procedure', backref='Sell')
 
 
 # 检斤表
@@ -615,6 +628,7 @@ class Weigh(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Procedures = db.relationship('Procedure', backref='Weigh')
 
 
 # 卸车表
@@ -631,6 +645,7 @@ class Unload(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Procedures = db.relationship('Procedure', backref='Unload')
 
 
 # 结算表
@@ -646,8 +661,23 @@ class Settlement(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Procedures = db.relationship('Procedure', backref='Settlement')
 
 
+# 流程表
+class Procedure(db.Model):
+    __tablename__ = "procedure"
+    ID = db.Column(db.Integer, primary_key=True)  # 结算单号
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))
+    SamplingID = db.Column(db.Integer, db.ForeignKey('sampling.ID'))
+    AssayID = db.Column(db.Integer, db.ForeignKey('assay.ID'))
+    SellID = db.Column(db.Integer, db.ForeignKey('sell.ID'))
+    WeighID = db.Column(db.Integer, db.ForeignKey('weigh.ID'))
+    UnloadID = db.Column(db.Integer, db.ForeignKey('unload.ID'))
+    SettlementID = db.Column(db.Integer, db.ForeignKey('settlement.ID'))
+    Status = db.Column(db.Integer, db.ForeignKey('procedurenode.ID'))
+    IsFrozen = db.Column(db.Integer)
+    FrozenerID = db.Column(db.Integer, db.ForeignKey('user.ID'))
 
 
 

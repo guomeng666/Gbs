@@ -519,15 +519,19 @@ def query_vehicle(json_data):
     query_list = list()
     print(page_data.total)
     print(page_data.pages)  # 当前查询的数据一共有多少页
-    for vehicle in page_data.items:
-        row = {"ID": vehicle.ID, "Name": vehicle.Liscense,  "VehicleType": vehicle.VehicleType.Name,
-               "color": vehicle.color, "FrameID": vehicle.FrameID,
-               "Creater": vehicle.Creater.Name, "Updater": vehicle.Updater.Name,
-               "CreateTime": str(vehicle.CreateTime), "UpdateTime": str(vehicle.UpdateTime)}
-        query_list.append(row)
+    if page_data.total != 0:
+        for vehicle in page_data.items:
+            row = {"ID": vehicle.ID, "Name": vehicle.Liscense,  "VehicleType": vehicle.VehicleType.Name,
+                   "color": vehicle.color, "FrameID": vehicle.FrameID,
+                   "Creater": vehicle.Creater.Name, "Updater": vehicle.Updater.Name,
+                   "CreateTime": str(vehicle.CreateTime), "UpdateTime": str(vehicle.UpdateTime)}
+            query_list.append(row)
 
-    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
-              "TotalData": page_data.total, "Data": query_list}
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+                  "TotalData": page_data.total, "Data": query_list}
+    else:
+        result = {"Cmd": cmd, "Errno": 8, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
     return json.dumps(result)
 
 
