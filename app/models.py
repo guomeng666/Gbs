@@ -263,6 +263,7 @@ class SampleClass(db.Model):
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Assays = db.relationship('Assay', backref='SampleClass')
 
 
 # 粮食类型
@@ -276,6 +277,7 @@ class CerealsType(db.Model):
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     Contracts = db.relationship('Contract', backref='CerealsType', foreign_keys="Contract.CerealsTypeID")
     Registers = db.relationship('Register', backref='CerealsType')
+    Assays = db.relationship('Assay', backref='CerealsType')
 
 
 # 运输公司
@@ -364,6 +366,7 @@ class PictureSample(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Samplings = db.relationship('Sampling', backref='Picture')
 
 
 # 化验图片
@@ -541,20 +544,25 @@ class Register(db.Model):
     ICID = db.Column(db.String(100))  # IC卡号码
     Remarks = db.Column(db.String(1024))  # IC卡号码
     PirctureID = db.Column(db.Integer, db.ForeignKey('pictureregister.ID'))  # 图片信息
+    IsComplete = db.Column(db.String(32))  # 收购流程是否完成  'OC'= 完成 'FZ' = 冻结 'BE'= 进行中 'IT' = 中断退出
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     Procedures = db.relationship('Procedure', backref='Register')
+    Samplings = db.relationship('Sampling', backref='Register')
+    Assays = db.relationship('Assay', backref='Register')
+    Sells = db.relationship('Sell', backref='Register')
+    Weighs = db.relationship('Weigh', backref='Register')
+    Unloads = db.relationship('Unload', backref='Register')
+    Settlements = db.relationship('Settlement', backref='Register')
 
 
 # 扦样表
 class Sampling(db.Model):
     __tablename__ = "sampling"
     ID = db.Column(db.Integer, primary_key=True)  # 扦样编号
-    VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
-    TagID = db.Column(db.String(100))  # 电子标签号码
-    TagStatus = db.Column(db.String(100))  # 电子标签状态
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
     PirctureID = db.Column(db.Integer, db.ForeignKey('picturesample.ID'))  # 图片信息
     Remarks = db.Column(db.String(1024))  # 备注信息
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
@@ -568,8 +576,8 @@ class Sampling(db.Model):
 class Assay(db.Model):
     __tablename__ = "assay"
     ID = db.Column(db.Integer, primary_key=True)  # 化验单号
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
     CerealsTypeID = db.Column(db.Integer, db.ForeignKey('cerealstype.ID'))  # 粮食类型
-    AssayStatus = db.Column(db.Boolean)  # 是否拒收
     SampleClassID = db.Column(db.Integer, db.ForeignKey('sampleclass.ID'))  # 样品级别
     SampleBox = db.Column(db.String(100))  # 样品盒号码
     IsStandard = db.Column(db.Boolean)  # 是否是标准样
@@ -588,12 +596,16 @@ class Assay(db.Model):
     RoughWeight = db.Column(db.Float)  # 样品毛重
     NetWeight = db.Column(db.Float)  # 样品净重
     Impurity = db.Column(db.Float)  # 杂志
+    IsComplete = db.Column(db.Boolean)  # 是否化验完毕
+    IsReject = db.Column(db.Boolean)  # 是否拒收
+    RejectContent = db.Column(db.String(1024))  # 拒收原因
+    Reserved = db.Column(db.String(1024))  # 留样号码
     Remarks = db.Column(db.String(1024))  # 备注信息
     PirctureID = db.Column(db.Integer, db.ForeignKey('pictureassay.ID'))  # 图片信息
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
-    UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 更新时间
     Procedures = db.relationship('Procedure', backref='Assay')
 
 
@@ -601,7 +613,7 @@ class Assay(db.Model):
 class Sell(db.Model):
     __tablename__ = "sell"
     ID = db.Column(db.Integer, primary_key=True)  # 售粮单号
-    VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
     IsSell = db.Column(db.Boolean)  # 是否出售
     PirctureID = db.Column(db.Integer, db.ForeignKey('picturesell.ID'))  # 图片信息
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
@@ -615,9 +627,8 @@ class Sell(db.Model):
 class Weigh(db.Model):
     __tablename__ = "weigh"
     ID = db.Column(db.Integer, primary_key=True)  # 检斤单号
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
     VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
-    TagID = db.Column(db.String(100))  # 电子标签号码
-    TagStatus = db.Column(db.String(100))  # 电子标签状态
     RoughWeight = db.Column(db.Float)  # 毛重
     RoughDate = db.Column(db.DateTime)  # 毛重时间
     TareWeight = db.Column(db.Float)  # 皮重
@@ -635,9 +646,8 @@ class Weigh(db.Model):
 class Unload(db.Model):
     __tablename__ = "unload"
     ID = db.Column(db.Integer, primary_key=True)  # 卸货单号
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
     VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
-    TagID = db.Column(db.String(100))  # 电子标签号码
-    TagStatus = db.Column(db.String(100))  # 电子标签状态
     TakeWeight = db.Column(db.Float)  # 扣重量
     WarehouseType = db.Column(db.Integer, db.ForeignKey('warehousetype.ID'))  # 仓库类型
     PirctureID = db.Column(db.Integer, db.ForeignKey('pictureunload.ID'))  # 图片信息
@@ -652,6 +662,7 @@ class Unload(db.Model):
 class Settlement(db.Model):
     __tablename__ = "settlement"
     ID = db.Column(db.Integer, primary_key=True)  # 结算单号
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
     ValuationID = db.Column(db.Integer, db.ForeignKey('valuation.ID'))  # 计价方式
     UnitPrice = db.Column(db.Float)  # 单价
     TotalPrice = db.Column(db.Float)  # 总价
@@ -675,7 +686,7 @@ class Procedure(db.Model):
     WeighID = db.Column(db.Integer, db.ForeignKey('weigh.ID'))
     UnloadID = db.Column(db.Integer, db.ForeignKey('unload.ID'))
     SettlementID = db.Column(db.Integer, db.ForeignKey('settlement.ID'))
-    Status = db.Column(db.Integer, db.ForeignKey('procedurenode.ID'))
+    CurrentNode = db.Column(db.String(100))
     IsFrozen = db.Column(db.Integer)
     FrozenerID = db.Column(db.Integer, db.ForeignKey('user.ID'))
 
