@@ -678,7 +678,7 @@ class Settlement(db.Model):
 # 流程表
 class Procedure(db.Model):
     __tablename__ = "procedure"
-    ID = db.Column(db.Integer, primary_key=True)  # 结算单号
+    ID = db.Column(db.Integer, primary_key=True)  # 流程单号
     RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))
     SamplingID = db.Column(db.Integer, db.ForeignKey('sampling.ID'))
     AssayID = db.Column(db.Integer, db.ForeignKey('assay.ID'))

@@ -691,7 +691,6 @@ def edit_assay(json_data):
         assay.Reserved = sample_bag
         assay.Remarks = remarks
         if operation == "add":
-            print("111111111")
             assay.IsComplete = 1
             assay.IsStandard = 0
             assay.Creater = operator
@@ -710,5 +709,146 @@ def edit_assay(json_data):
             db.session.commit()
         result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
                   "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+# 使用IC卡查询化验信息
+def query_assay_by_ic(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    ic_number = json_data.get("Number")
+
+    result = {"Cmd": cmd, "Errno": 8, "ErrMsg": "没有找到化验数据!", "Page": "", "TotalData": "", "Data": ""}
+    if len(ic_number) != 0:
+        # 从登记表这种找出这个IC卡的凭证号
+        register = Register.query.filter(Register.ICID == ic_number and Register.IsComplete == "BE")\
+                                         .order_by(Register.CreateTime.desc()).first()
+        if register:
+            # 从流程表中找出化验记录
+            procedure = Procedure.query.filter(Procedure.RegisterID == register.ID).first()
+            if procedure.SellID is None:
+                # 获取化验信息
+                if procedure.Assay:
+                    row = {
+                        "ProcedureNum": procedure.ID,
+                        "PurchaseType": procedure.Register.PurchaseType,
+                        "GrainType": procedure.Register.CerealsType.Name,
+                        "PackType": procedure.Register.PackType.Name,
+                        "License": procedure.Register.Vehicle.Liscense,
+                        "VehicleType": procedure.Register.Vehicle.VehicleType.Name,
+                        "Color": procedure.Register.Vehicle.color,
+                        "UnitWeight": procedure.Assay.UnitWeight,
+                        "Moisture": procedure.Assay.Moisture,
+                        "Impurity": procedure.Assay.Impurity,
+                        "Mildew": procedure.Assay.Mildew,
+                        "Broken": procedure.Assay.Broken,
+                        "HeatHarm": procedure.Assay.HeatHarm,
+                        "SideImpurity": procedure.Assay.SideImpurity,
+                        "Scree": procedure.Assay.Scree,
+                        "SoilBlock": procedure.Assay.SoilBlock,
+                        "RodCore": procedure.Assay.RodCore,
+                        "DifGrain": procedure.Assay.DifferentGrain,
+                        "BlistersGrain": procedure.Assay.BlistersGrain,
+                        "PeculiarSmell": procedure.Assay.PeculiarSmell,
+                        "IsReject": procedure.Assay.IsReject,
+                    }
+                    print(row)
+                    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": 1,
+                              "TotalData": "", "Data": row}
+            else:
+                result = {"Cmd": cmd, "Errno": 8, "ErrMsg": "已经出售,无需再次出售！", "Page": 1,
+                          "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+#  售粮提交
+def sell_grain(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")
+    procedure_num = json_data.get("ProcedureNum")
+    is_sell = json_data.get("Sell")
+
+    # 获取发送人
+    operator = User.query.filter(User.Name == sender).first()
+
+    if operation == "add":
+        sell = Sell()
+    elif operation == "alter":
+        sell = Sell.query.filter(Sell.ID == number).first()
+
+    if operation == "add":
+        # 找到流程表
+        procedure = Procedure.query.filter(Procedure.ID == procedure_num).first()
+        if procedure:
+            sell.RegisterID = procedure.RegisterID
+        sell.Creater = operator
+    sell.IsSell = int(is_sell)
+    sell.Updater = operator
+    db.session.add(sell)
+    db.session.commit()
+
+    if operation == "add":
+        procedure.Sell = sell
+        db.session.add(procedure)
+        db.session.commit()
+
+    if operation == "delete":
+        # 先查询删除的数据是否存在
+        delete = Sell.query.filter(Sell.ID == number).first()
+        if delete:
+            db.session.delete(delete)
+            db.session.commit()
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": 1,
+              "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+# 售粮查询
+def query_sell(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    name = json_data.get("Name")  # 车牌号码
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+
+    # 获取发送人
+    user = User.query.filter(User.Name == sender).first()
+    name.strip()
+    if len(name) != 0:
+        page_data = Sell.query.join(Register).join(Vehicle).filter(Vehicle.Liscense == name)\
+            .paginate(page=int(start_page), per_page=int(per_page))
+        pass
+    elif start_date and end_date is not None:
+        page_data = Sell.query.filter(Sell.CreateTime.between(start_date, end_date)) \
+                    .order_by(Sell.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = Sell.query.order_by(Sell.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+
+    for sell in page_data.items:
+        row = {
+                "ID": sell.ID,
+                "License": sell.Register.Vehicle.Liscense,
+                "Status": sell.IsSell,
+                "Creater": sell.Creater.Name, "Updater": sell.Updater.Name,
+                "CreateTime": str(sell.CreateTime), "UpdateTime": str(sell.UpdateTime)
+               }
+        query_list.append(row)
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    print(result)
     return json.dumps(result)
 
