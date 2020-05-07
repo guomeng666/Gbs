@@ -37,6 +37,24 @@ def add_seller(name, num, address, phone, banktype, bank_num, operator):
     return seller
 
 
+# 根据收购流程获取一个计价方式
+def get_valuation(procedure):
+    # 获取当前化验粮食是散收粮还是合同粮
+    purchase_type = procedure.Register.PurchaseType
+    # 选择一个合适的计价方式
+    if purchase_type == "合同粮":
+        # 寻找合同号码
+        valuation = procedure.Register.Contract.Valuation
+        # 如果合同里没有指定计价方式,则选择默认计价方式
+        if not valuation:
+            valuation = Valuation.query.filter(Valuation.IsDefault == 1).order_by(Valuation.CreateTime.desc()).first()
+    elif purchase_type == "散收粮":
+        # 散收粮直接选择最新的默认计价方式
+        valuation = Valuation.query.filter(Valuation.IsDefault == 1).order_by(Valuation.CreateTime.desc()).first()
+
+    return valuation
+
+
 # 查询图片
 def query_picture(json_data):
     print(json_data)
@@ -53,6 +71,30 @@ def query_picture(json_data):
         row = {
             "Picture1": picture.Picture1, "Picture2": picture.Picture2,
             "Picture3": picture.Picture3, "Picture4": picture.Picture4,
+              }
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": 0,
+                  "TotalData": "", "Data": row}
+    else:
+        result = {"Cmd": cmd, "Errno": 8, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+
+    return json.dumps(result)
+
+
+# 查询检斤图片
+def query_weigh_picture(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    picture_id = json_data.get("Number")
+
+    picture = PictureWeigh.query.filter(PictureWeigh.ID == picture_id).first()
+    if picture:
+        row = {
+            "RoughPicture1": picture.RoughPicture1, "RoughPicture2": picture.RoughPicture2,
+            "RoughPicture3": picture.RoughPicture3, "RoughPicture4": picture.RoughPicture4,
+            "TarePicture1": picture.TarePicture1, "TarePicture2": picture.TarePicture2,
+            "TarePicture3": picture.TarePicture3, "TarePicture4": picture.TarePicture4,
               }
         result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": 0,
                   "TotalData": "", "Data": row}
@@ -153,6 +195,32 @@ def query_register_by_tagnum(json_data):
 
     else:
         result = {"Cmd": cmd, "Errno": 8, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+
+    return json.dumps(result)
+
+
+# 使用车牌号码查询登记信息
+def query_register_by_license(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    license_ = json_data.get("License")
+
+    if len(license_) != 0:
+        register = Register.query.join(Vehicle).filter(Vehicle.Liscense == license_ and Register.IsComplete == "BE")\
+                    .order_by(Register.CreateTime.desc()).first()
+
+    if register:
+        row = {
+            "RegisterID": register.ID, "PurchaseType": register.PurchaseType, "PackType": register.PackType.Name,
+            "GrainType": register.CerealsType.Name, "License": register.Vehicle.Liscense,
+            "VehicleType": register.Vehicle.VehicleType.Name, "VehicleColor": register.Vehicle.color,
+            "VehicleFrame": register.Vehicle.FrameID
+        }
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": 0, "TotalData": "", "Data": row}
+    else:
+        result = {"Cmd": cmd, "Errno": 5, "ErrMsg": "没有找到数据", "Page": "",
                   "TotalData": "", "Data": ""}
 
     return json.dumps(result)
@@ -630,40 +698,84 @@ def edit_assay(json_data):
 
     detial = valuation.Detail
     reject_str = ""
+    cubage_ratio = 0.0
+    water_ratio = 0.0
+    impurity_ratio = 0.0
+    sideimpurity_ratio = 0.0
+    mildew_ratio = 0.0
+    broken_ratio = 0.0
+    heatharm_ratio = 0.0
+
     # 判断容重是否超标
-    result = unitweight_is_above(detial, unit_weight)
+    result = assay_is_above(detial, "Cubage", unit_weight)
     if result[0]:
         reject_str = "容重大于" + str(result[1]) + "%拒收 "
+    else:
+        cubage_ratio = float(result[1])
 
     # 判断水分是否超标
-    result = moisture_is_above(detial, moisture)
+    result = assay_is_above(detial, "Water", moisture)
     if result[0]:
         reject_str = reject_str + "水分大于" + str(result[1]) + "%拒收 "
+    else:
+        water_ratio = float(result[1])
 
     # 判断杂质是否超标
-    result = impurity_is_above(detial, impurity)
+    result = assay_is_above(detial, "Impurity", impurity)
     if result[0]:
         reject_str = reject_str + "杂质大于" + str(result[1]) + "%拒收 "
+    else:
+        impurity_ratio = float(result[1])
 
-    # 并间质是否超标
-    result = sideimpurity_is_above(detial, side_impurity)
+    # 并间杂是否超标
+    result = assay_is_above(detial, "SideImpurity", side_impurity)
     if result[0]:
         reject_str = reject_str + "并间杂大于" + str(result[1]) + "%拒收 "
+    else:
+        sideimpurity_ratio = float(result[1])
 
     # 霉变是否超标
-    result = mildew_is_above(detial, mildew)
+    result = assay_is_above(detial, "MildewRule", mildew)
     if result[0]:
         reject_str = reject_str + "霉变大于" + str(result[1]) + "%拒收 "
+    else:
+        mildew_ratio = float(result[1])
 
     # 破碎是否超标
-    result = broken_is_above(detial, broken)
+    result = assay_is_above(detial, "Broken", broken)
     if result[0]:
         reject_str = reject_str + "破碎大于" + str(result[1]) + "%拒收 "
+    else:
+        broken_ratio = float(result[1])
 
     # 热损是否超标
-    result = heat_harm_is_above(detial, heat_harm)
+    result = assay_is_above(detial, "HeatHarm", heat_harm)
     if result[0]:
         reject_str = reject_str + "热损大于" + str(result[1]) + "%拒收 "
+    else:
+        heatharm_ratio = float(result[1])
+
+    # 添加或者修改扣重记录
+    if procedure.DeductRatio:
+        deduct_ratio = procedure.DeductRatio
+    else:
+        deduct_ratio = DeductRatio()
+    deduct_ratio.RegisterID = procedure.RegisterID
+    deduct_ratio.WaterRatio = cubage_ratio
+    deduct_ratio.CubageRatio = water_ratio
+    deduct_ratio.ImpurityRatio = impurity_ratio
+    deduct_ratio.SideRatio = sideimpurity_ratio
+    deduct_ratio.MildewRatio = mildew_ratio
+    deduct_ratio.BrokenRatio = broken_ratio
+    deduct_ratio.HartHeatRatio = heatharm_ratio
+    deduct_ratio.UnloadRatio = 0.0
+    db.session.add(deduct_ratio)
+    db.session.commit()
+    # 在流程表中增加扣重记录
+    if procedure.DeductRatio is None:
+        procedure.DeductRatio = deduct_ratio
+        db.session.add(procedure)
+        db.session.commit()
 
     # 向化验数据增加拒收原因
     if reject_str:
@@ -691,7 +803,7 @@ def edit_assay(json_data):
         assay.Reserved = sample_bag
         assay.Remarks = remarks
         if operation == "add":
-            assay.IsComplete = 1
+            # assay.IsComplete = 1
             assay.IsStandard = 0
             assay.Creater = operator
         assay.Updater = operator
@@ -850,5 +962,363 @@ def query_sell(json_data):
     result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
               "TotalData": page_data.total, "Data": query_list}
     print(result)
+    return json.dumps(result)
+
+
+# 检斤编辑
+def edit_weigh(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")                   # 数据库编号 修改使用
+    register_id = json_data.get("RegisterID")          # 登记ID
+    weight = json_data.get("Weight")                   # 重量
+    remarks = json_data.get("Remarks")                 # 备注
+    pircture1 = json_data.get("Picture1")              # 图片1
+    pircture2 = json_data.get("Picture2")              # 图片2
+    pircture3 = json_data.get("Picture3")              # 图片3
+    pircture4 = json_data.get("Picture4")              # 图片4
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "", "TotalData": "", "Data": ""}
+    # 获取发送人
+    operator = User.query.filter(User.Name == sender).first()
+    # 获取流程状态表
+    procedure = Procedure.query.filter(Procedure.RegisterID == register_id).first()
+    weigh = procedure.Weigh
+    # 首先判断是重检还是皮检
+    if weigh is None:
+        # 重检
+        weigh = Weigh()
+        # 保存图片
+        pircture = PictureWeigh()
+        pircture.RoughPicture1 = pircture1
+        pircture.RoughPicture2 = pircture2
+        pircture.RoughPicture3 = pircture3
+        pircture.RoughPicture4 = pircture4
+        pircture.Creater = operator
+        pircture.Updater = operator
+        db.session.add(pircture)
+        db.session.commit()
+
+        weigh.Picture = pircture  # 图片信息
+        weigh.RegisterID = register_id
+        weigh.RoughWeight = weight
+        weigh.RoughRemarks = remarks
+        weigh.RoughDate = datetime.now()
+        weigh.RoughOperator = operator
+        weigh.Creater = operator
+        weigh.Updater = operator
+        db.session.add(weigh)
+        db.session.commit()
+
+        # 把新建立的扦样数据数据放入到流程表中
+        procedure.Weigh = weigh
+        procedure.CurrentNode = "重检"
+        db.session.add(procedure)
+        db.session.commit()
+    else:
+        # 皮检
+        weigh.Picture.TarePicture1 = pircture1
+        weigh.Picture.TarePicture2 = pircture2
+        weigh.Picture.TarePicture3 = pircture3
+        weigh.Picture.TarePicture4 = pircture4
+        weigh.Picture.Updater = operator
+        weigh.Picture.UpdateTime = datetime.now()
+        db.session.add(weigh.Picture)
+        db.session.commit()
+
+        weigh.TareWeight = weight
+        weigh.TareRemarks = remarks
+        weigh.TareDate = datetime.now()
+        weigh.TareOperator = operator
+        weigh.Updater = operator
+        weigh.UpdateTime = datetime.now()
+        # 算出净重
+        weigh.NetWeight = float(weigh.RoughWeight) - float(weight)
+
+        db.session.add(weigh)
+        db.session.commit()
+
+        # 根据流程获取一个计价方式
+        valuation = get_valuation(procedure)
+        # .获取化验数据的扣重比
+        total_ratio = procedure.DeductRatio.CubageRatio + procedure.DeductRatio.WaterRatio\
+            + procedure.DeductRatio.ImpurityRatio + procedure.DeductRatio.SideRatio\
+            + procedure.DeductRatio.MildewRatio + procedure.DeductRatio.BrokenRatio\
+            + procedure.DeductRatio.HartHeatRatio
+
+        # .获取卸粮的扣重值
+        unload_deduct = procedure.Unload.TakeWeight
+        # 净重
+        net_weight = procedure.Weigh.NetWeight
+        # .净重*总扣重比 = 结算重量
+        net_weight = net_weight - net_weight * (total_ratio/100) - unload_deduct
+        # .结算重量*计价方式单价 = 总金额
+        total_price = net_weight * valuation.Price
+        # .生成结算结果存入数据库
+        settlement = Settlement()
+        settlement.RegisterID = procedure.RegisterID
+        settlement.Valuation = valuation
+        settlement.TotalWeight = procedure.Weigh.NetWeight
+        settlement.ValidWeight = net_weight
+        settlement.TotalDeductRatio = total_ratio
+        settlement.UnloadDeduct = unload_deduct
+        settlement.UnitPrice = valuation.Price
+        settlement.TotalPrice = total_price
+        settlement.IsPayment = 0
+
+        db.session.add(settlement)
+        db.session.commit()
+
+        procedure.Settlement = settlement
+        db.session.add(procedure)
+        db.session.commit()
+
+    if operation == "delete":
+        # 先查询删除的数据是否存在
+        delete = Weigh.query.filter(Weigh.ID == number).first()
+        if delete:
+            db.session.delete(delete)
+            db.session.commit()
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+    return json.dumps(result)
+
+
+# 检斤查询
+def query_weigh(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    field = json_data.get("Field")
+    name = json_data.get("Name")
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+
+    name.strip()
+    if len(name) != 0:
+        # 按车牌号码查询数据
+        if field == "车牌号码":
+            # 先根据车牌号码查询车辆信息
+            # vehicle = Vehicle.query.filter(Vehicle.Liscense == name).first()
+            page_data = Weigh.query.join(Register).join(Vehicle).filter(Vehicle.Liscense == name)\
+                .paginate(page=int(start_page), per_page=int(per_page))
+
+    elif start_date and end_date is not None:
+        page_data = Weigh.query.filter(Weigh.CreateTime.between(start_date, end_date)) \
+                    .order_by(Weigh.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = Weigh.query.order_by(Weigh.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+
+    for weigh in page_data.items:
+        row = {
+                "ID": weigh.ID,
+                "RegisterID": weigh.RegisterID,
+                "License": weigh.Register.Vehicle.Liscense,
+                "RoughWeight": weigh.RoughWeight,
+                "RoughDate": str(weigh.RoughDate),
+                "RoughOperator": weigh.RoughOperator.Name,
+                "RoughRemarks": weigh.RoughRemarks,
+                "TareWeight": weigh.TareWeight,
+                "TareDate": str(weigh.TareDate),
+                "TareOperator": weigh.TareOperator.Name,
+                "TareRemarks": weigh.TareRemarks,
+                "NetWeight": weigh.NetWeight,
+                "PrictureID": weigh.PirctureID,
+                "Creater": weigh.Creater.Name, "Updater": weigh.Updater.Name,
+                "CreateTime": str(weigh.CreateTime), "UpdateTime": str(weigh.UpdateTime)
+               }
+        query_list.append(row)
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    print(result)
+    return json.dumps(result)
+
+
+# 检斤修改
+def alter_weigh(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")                   # 数据库编号 修改使用
+    rought_weight = json_data.get("RoughtWeight")      # 重检重量
+    rought_remarks = json_data.get("RoughtRemarks")    # 重检备注
+    trae_weight = json_data.get("TraeWeight")          # 空检重量
+    trae_remarks = json_data.get("TraeRemarks")        # 空检备注
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "", "TotalData": "", "Data": ""}
+    # 获取发送人
+    operator = User.query.filter(User.Name == sender).first()
+    weigh = Weigh.query.filter(Weigh.ID == number).first()
+    if weigh:
+        weigh.RoughWeight = rought_weight
+        weigh.RoughRemarks = rought_remarks
+        weigh.TareWeight = trae_weight
+        weigh.TareRemarks = trae_remarks
+        db.session.add(weigh)
+        db.session.commit()
+        weigh.NetWeight = weigh.RoughWeight - weigh.TareWeight
+        db.session.add(weigh)
+        db.session.commit()
+    else:
+        result = {"Cmd": cmd, "Errno": 8, "ErrMsg": "修改的数据不存在", "Page": "", "TotalData": "", "Data": ""}
+
+    return json.dumps(result)
+
+
+# 卸粮编辑
+def edit_unload(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    operation = json_data.get("Operation")
+    number = json_data.get("Number")                   # 数据库编号 修改使用
+    register_id = json_data.get("RegisterID")      # 登记编号
+    warehouse_id = json_data.get("WareHouseID")    # 仓库编号
+    take_count = json_data.get("TakeCount")          # 扣重总重
+    remarks = json_data.get("Remarks")        # 备注
+
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "", "TotalData": "", "Data": ""}
+    # 获取发送人
+    operator = User.query.filter(User.Name == sender).first()
+    if operation == "add" or operation == "alter":
+        if operation == "add":
+            unload = Unload()
+            unload.RegisterID = register_id
+            unload.Creater = operator
+        elif operation == "alter":
+            unload = Unload.query.filter(Unload.ID == number).first()
+
+        unload.WarehouseTypeID = warehouse_id
+        unload.TakeWeight = take_count
+        unload.Remarks = remarks
+        unload.Updater = operator
+        unload.UpdateTime = datetime.now()
+        db.session.add(unload)
+        db.session.commit()
+        if operation == "add":
+            # 找到流程表
+            procedure = Procedure.query.filter(Procedure.RegisterID == register_id).first()
+            if procedure:
+                procedure.Unload = unload
+                db.session.add(procedure)
+                db.session.commit()
+    elif operation == "delete":
+        # 先查询删除的数据是否存在
+        delete = Unload.query.filter(Unload.ID == number).first()
+        if delete:
+            db.session.delete(delete)
+            db.session.commit()
+        result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": "",
+                  "TotalData": "", "Data": ""}
+
+    return json.dumps(result)
+
+
+# 卸粮查询
+def query_unload(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    name = json_data.get("Name")
+    start_page = json_data.get("StartPage")
+    per_page = json_data.get("PerPage")
+    start_date = json_data.get("StartDate")
+    end_date = json_data.get("EndDate")
+
+    name.strip()
+    if len(name) != 0:
+        page_data = Unload.query.join(Register).join(Vehicle).filter(Vehicle.Liscense == name)\
+            .paginate(page=int(start_page), per_page=int(per_page))
+
+    elif start_date and end_date is not None:
+        page_data = Unload.query.filter(Unload.CreateTime.between(start_date, end_date)) \
+                    .order_by(Unload.CreateTime.desc()) \
+                    .paginate(page=int(start_page), per_page=int(per_page))
+    else:
+        page_data = Unload.query.order_by(Unload.CreateTime.desc())\
+                    .paginate(page=int(start_page), per_page=int(per_page))
+
+    query_list = list()
+    print(page_data.total)
+    print(page_data.pages)  # 当前查询的数据一共有多少页
+
+    for unload in page_data.items:
+        row = {
+                "ID": unload.ID,
+                "License": unload.Register.Vehicle.Liscense,
+                "WareHouse": unload.WareHouse.Name,
+                "TakeCount": unload.TakeWeight,
+                "Remarks": unload.Remarks,
+                "Creater": unload.Creater.Name, "Updater": unload.Updater.Name,
+                "CreateTime": str(unload.CreateTime), "UpdateTime": str(unload.UpdateTime)
+               }
+        query_list.append(row)
+    result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": start_page,
+              "TotalData": page_data.total, "Data": query_list}
+    print(result)
+    return json.dumps(result)
+
+
+# 使用IC卡查询结算信息
+def query_settlement_by_ic(json_data):
+    print(json_data)
+    cmd = json_data.get("Cmd")
+    sender = json_data.get("Sender")
+    ic_number = json_data.get("Number")
+    print("查询结算")
+    result = {"Cmd": cmd, "Errno": 5, "ErrMsg": "没有找到数据!", "Page": "", "TotalData": "", "Data": ""}
+    if len(ic_number) != 0:
+        # 从登记表这种找出这个IC卡的凭证号
+        register = Register.query.filter(Register.ICID == ic_number and Register.IsComplete == "BE")\
+                                         .order_by(Register.CreateTime.desc()).first()
+        if register:
+            # 从流程表中找出化验记录
+            procedure = Procedure.query.filter(Procedure.RegisterID == register.ID).first()
+            if procedure.Settlement:
+                row = {
+                    "ProcedureID": procedure.ID,
+                    "RegisterID": procedure.ID,
+                    "PurchaseType": procedure.Register.PurchaseType,
+                    "GrainType": procedure.Register.CerealsType.Name,
+                    "PackType": procedure.Register.PackType.Name,
+                    "License": procedure.Register.Vehicle.Liscense,
+                    "VehicleType": procedure.Register.Vehicle.VehicleType.Name,
+                    "Color": procedure.Register.Vehicle.color,
+                    "Frame": procedure.Register.Vehicle.FrameID,
+                    "CupageRatio": procedure.DeductRatio.CubageRatio,
+                    "MoistureRatio": procedure.DeductRatio.WaterRatio,
+                    "ImpurityRatio": procedure.DeductRatio.ImpurityRatio,
+                    "MildewRatio": procedure.DeductRatio.MildewRatio,
+                    "BrokenRatio": procedure.DeductRatio.BrokenRatio,
+                    "HeatHarmRatio": procedure.DeductRatio.HartHeatRatio,
+                    "SidebysideImpurityRatio": procedure.DeductRatio.SideRatio,
+                    "TotalRatio": procedure.Settlement.TotalDeductRatio,
+                    "UnloadDeduct": procedure.Settlement.UnloadDeduct,
+                    "RoughWeight": procedure.Weigh.RoughWeight,
+                    "TareWeight": procedure.Weigh.TareWeight,
+                    "NetWeight": procedure.Settlement.TotalWeight,
+                    "ValidWeight": procedure.Settlement.ValidWeight,
+                    "Valuation": procedure.Settlement.Valuation.Name,
+                    "UnitPrice": procedure.Settlement.UnitPrice,
+                    "TotalPrice": procedure.Settlement.TotalPrice,
+                    "Seller": procedure.Register.Seller.Name,
+                    "PayType": procedure.Register.PaymentType.Name,
+                    "BankType": procedure.Register.Seller.BankType.Name,
+                    "BankNum": procedure.Register.Seller.BankID
+                }
+                print(row)
+                result = {"Cmd": cmd, "Errno": 0, "ErrMsg": "noError", "Page": 1,
+                          "TotalData": "", "Data": row}
     return json.dumps(result)
 

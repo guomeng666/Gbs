@@ -159,12 +159,11 @@ class User(db.Model):
 
     WeighCreater = db.relationship('Weigh', backref='Creater', foreign_keys="Weigh.CreateID")
     WeighUpdater = db.relationship('Weigh', backref='Updater', foreign_keys="Weigh.UpdateID")
+    RoughOperator = db.relationship('Weigh', backref='RoughOperator', foreign_keys="Weigh.RoughOperatorID")
+    TareOperator = db.relationship('Weigh', backref='TareOperator', foreign_keys="Weigh.TareOperatorID")
 
     UnloadCreater = db.relationship('Unload', backref='Creater', foreign_keys="Unload.CreateID")
     UnloadUpdater = db.relationship('Unload', backref='Updater', foreign_keys="Unload.UpdateID")
-
-    SettlementCreater = db.relationship('Settlement', backref='Creater', foreign_keys="Settlement.CreateID")
-    SettlementUpdater = db.relationship('Settlement', backref='Updater', foreign_keys="Settlement.UpdateID")
 
     Frozens = db.relationship('Procedure', backref='Frozener', foreign_keys="Procedure.FrozenerID")
 
@@ -337,6 +336,7 @@ class WareHouseType(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Unloads = db.relationship('Unload', backref='WareHouse')
 
 
 # 登记图片
@@ -413,6 +413,7 @@ class PictureWeigh(db.Model):
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    Weighs = db.relationship('Weigh', backref='Picture')
 
 
 # 卸粮图片
@@ -482,7 +483,7 @@ class Valuation(db.Model):
     __tablename__ = "valuation"
     ID = db.Column(db.Integer, primary_key=True)  # 编号
     Name = db.Column(db.String(100))  # 计价名称
-    Price = db.Column(db.Float)  # 每吨多少钱
+    Price = db.Column(db.Float)  # 收购单价
     IsDefault = db.Column(db.Boolean)  # 当前是否是核算的默认计价方式
     Detail = db.Column(db.Text)  # 详细计价方式内容
     Remarks = db.Column(db.String(1024))  # 备注
@@ -491,7 +492,7 @@ class Valuation(db.Model):
     UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
     UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
     Contracts = db.relationship('Contract', backref='Valuation', foreign_keys="Contract.ValuationID")
-
+    Settlements = db.relationship('Settlement', backref='Valuation')
 
 # 合同管理表
 class Contract(db.Model):
@@ -628,12 +629,15 @@ class Weigh(db.Model):
     __tablename__ = "weigh"
     ID = db.Column(db.Integer, primary_key=True)  # 检斤单号
     RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
-    VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
     RoughWeight = db.Column(db.Float)  # 毛重
+    RoughOperatorID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 重检操作人
     RoughDate = db.Column(db.DateTime)  # 毛重时间
     TareWeight = db.Column(db.Float)  # 皮重
+    TareOperatorID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 空检操作人
     TareDate = db.Column(db.DateTime)  # 皮重时间
     NetWeight = db.Column(db.Float)  # 净重
+    RoughRemarks = db.Column(db.String(1024))  # 重检备注信息
+    TareRemarks = db.Column(db.String(1024))   # 皮检备注信息
     PirctureID = db.Column(db.Integer, db.ForeignKey('pictureweigh.ID'))  # 图片信息
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
@@ -647,9 +651,9 @@ class Unload(db.Model):
     __tablename__ = "unload"
     ID = db.Column(db.Integer, primary_key=True)  # 卸货单号
     RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
-    VehicleID = db.Column(db.Integer, db.ForeignKey('vehicle.ID'))  # 车辆ID
     TakeWeight = db.Column(db.Float)  # 扣重量
-    WarehouseType = db.Column(db.Integer, db.ForeignKey('warehousetype.ID'))  # 仓库类型
+    WarehouseTypeID = db.Column(db.Integer, db.ForeignKey('warehousetype.ID'))  # 仓库类型
+    Remarks = db.Column(db.String(1024))   # 备注信息
     PirctureID = db.Column(db.Integer, db.ForeignKey('pictureunload.ID'))  # 图片信息
     CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
     CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
@@ -664,15 +668,33 @@ class Settlement(db.Model):
     ID = db.Column(db.Integer, primary_key=True)  # 结算单号
     RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
     ValuationID = db.Column(db.Integer, db.ForeignKey('valuation.ID'))  # 计价方式
+    TotalWeight = db.Column(db.Float)  # 总重
+    ValidWeight = db.Column(db.Float)  # 有效重量
+    TotalDeductRatio = db.Column(db.Float)  # 总扣重比
+    UnloadDeduct = db.Column(db.Float)  # 卸车扣重量
     UnitPrice = db.Column(db.Float)  # 单价
     TotalPrice = db.Column(db.Float)  # 总价
     IsPayment = db.Column(db.Boolean)  # 是否付款
     PirctureID = db.Column(db.Integer, db.ForeignKey('picturesettlement.ID'))  # 图片信息
-    CreateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 创建者
-    CreateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
-    UpdateID = db.Column(db.Integer, db.ForeignKey('user.ID'))  # 更新者
-    UpdateTime = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    CreateTime = db.Column(db.DateTime, default=datetime.now)
+    UpdateTime = db.Column(db.DateTime, default=datetime.now)
     Procedures = db.relationship('Procedure', backref='Settlement')
+
+
+# 扣重表
+class DeductRatio(db.Model):
+    __tablename__ = "deductratio"
+    ID = db.Column(db.Integer, primary_key=True)  # 结算单号
+    RegisterID = db.Column(db.Integer, db.ForeignKey('register.ID'))  # 登记表ID
+    WaterRatio = db.Column(db.Float)       # 水分扣重比
+    CubageRatio = db.Column(db.Float)      # 容重扣重比
+    ImpurityRatio = db.Column(db.Float)    # 杂质扣重比
+    SideRatio = db.Column(db.Float)        # 并间扣重比
+    MildewRatio = db.Column(db.Float)      # 霉变扣重比
+    BrokenRatio = db.Column(db.Float)      # 破碎扣重比
+    HartHeatRatio = db.Column(db.Float)    # 热损扣重比
+    UnloadRatio = db.Column(db.Float)      # 卸粮扣重比
+    Procedures = db.relationship('Procedure', backref='DeductRatio')
 
 
 # 流程表
@@ -685,6 +707,7 @@ class Procedure(db.Model):
     SellID = db.Column(db.Integer, db.ForeignKey('sell.ID'))
     WeighID = db.Column(db.Integer, db.ForeignKey('weigh.ID'))
     UnloadID = db.Column(db.Integer, db.ForeignKey('unload.ID'))
+    DeductRatioID = db.Column(db.Integer, db.ForeignKey('deductratio.ID'))  # 扣重表
     SettlementID = db.Column(db.Integer, db.ForeignKey('settlement.ID'))
     CurrentNode = db.Column(db.String(100))
     IsFrozen = db.Column(db.Integer)
